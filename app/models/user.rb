@@ -7,9 +7,9 @@ class User < ActiveRecord::Base
   has_one :email_verification
   belongs_to :university
 
-  serialize :photo_urls
+  before_save :ensure_is_in_correct_set
 
-  enum relationship_status: [:single, :its_complicated, :in_a_relationship]
+  serialize :photo_urls
   enum account_status: [:unverified, :verified]
   enum gender: [:male, :female]
   enum interested_in: [:males, :females]
@@ -18,6 +18,8 @@ class User < ActiveRecord::Base
   set :admirers
   set :admired # people you've admired
   set :matches
+
+  # fetch methods
 
   def random_valid_users(number)
     user_ids = self.compatible_users.difference(history, matches, admired).sample(number)
@@ -58,6 +60,58 @@ class User < ActiveRecord::Base
     end
   end
 
+  # auth
+
+  def self.auth_using_facebook_access_token access_token
+    fb = Koala::Facebook::API.new(access_token)
+    fb_user = fb.get_object("me?fields=id")
+    user = User.find_by(fb_id: fb_user["id"])
+    if user
+      # login and return details
+      return user
+    end
+
+    # check if part of valid university
+    fb_groups = fb.get_connections("me","groups?fields=id")
+    gids = fb_groups.map{|g| g["id"]}
+    university = University.where(fb_group_id: gids).first
+
+    if !university
+      # user is unauthorized to use app. TODO check email?
+      return nil
+    end
+
+    # create new user
+    # need permissions - email, user_relationships, user_relationship_details, birthday
+    fb_user = fb.get_object("me?fields=id,first_name,last_name,gender,birthday,email,relationship_status,interested_in")
+    user = User.new
+    user.university = university
+    user.fb_id = fb_user["id"]
+    user.name = "#{fb_user['first_name']} #{fb_user['last_name']}"
+    user.gender = User.genders[fb_user["gender"]]
+    user.date_of_birth = Date.parse(fb_user["birthday"])
+    user.email = fb_user["email"]
+    user.password = Devise.friendly_token.first(12)
+    user.relationship_status = fb_user["relationship_status"].capitalize # what if fb_user["relationship_status"] is nil?
+
+    # if only interested in one gender, set that as it. Otherwise just select opposite to current gender
+    # TODO: tidy this up
+    if fb_user["interested_in"] && fb_user["interested_in"].count != 1
+      user.interested_in = user.male? ? :females : :males
+    elsif fb_user["interested_in"]
+      user.interested_in = fb_user["interested_in"] == "female" ? :females : :males
+    end
+
+    user.save
+    return user
+  end
+
+  def send_verification_email
+    email_verification = EmailVerification.generate! self
+  end
+
+  # others and helpers
+
   def generate_access_token
     token = ""
     begin
@@ -65,14 +119,6 @@ class User < ActiveRecord::Base
     end while User.exists?(access_token: token)
     self.access_token = token
     self.save
-  end
-
-  def set_visible
-    Redis::Set.new(targeted_by_identifier) << id
-  end
-
-  def set_invisible
-    Redis::Set.new(targeted_by_identifier).delete(id)
   end
 
   def targeted_by_identifier
@@ -106,6 +152,13 @@ class User < ActiveRecord::Base
       map = Hash[ids.map.with_index.to_a]
       users.to_a.sort_by! {|user| map[user.id.to_s]}
       users
+    end
+
+    def ensure_is_in_correct_set
+      if self.gender_changed? || self.interested_in_changed?
+        Redis::Set.new(targeted_by_identifier).delete(id) # move out of old
+        Redis::Set.new(targeted_by_identifier) << id # and into new
+      end
     end
 
 end

@@ -24,7 +24,7 @@ end
   user.description = Faker::Lorem.paragraph
   user.email = Faker::Internet.email(user.name)
   user.photo_urls = [demo_photo, demo_photo, demo_photo]
-  user.relationship_status = Random.rand(3)
+  user.relationship_status = ["Single","It's complicated", "In a relationship"][Random.rand(3)]
   user.gender = Random.rand(2)
   user.interested_in = Random.rand(2)
   user.date_of_birth = (18.years + rand(10.years)).seconds.ago
