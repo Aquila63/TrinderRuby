@@ -3,6 +3,10 @@ class User < ActiveRecord::Base
   require 'securerandom'
 
   include Redis::Objects
+
+  has_one :email_verification
+  belongs_to :university
+
   serialize :photo_urls
 
   enum relationship_status: [:single, :its_complicated, :in_a_relationship]
@@ -19,10 +23,17 @@ class User < ActiveRecord::Base
     user_ids = self.compatible_users.difference(history, matches, admired).sample(number)
     user_ids -= [id.to_s] # remove yourself. Not ideal
     user_ids = (admirers.to_a + user_ids).uniq
-    users = User.where(id:user_ids)
-    map = Hash[user_ids.map.with_index.to_a]
-    users.to_a.sort_by! {|user| map[user.id.to_s]}
-    users
+    fetch_and_sort user_ids
+  end
+
+  def sorted_history
+    user_ids = @user.history.to_a
+    fetch_and_sort user_ids
+  end
+
+  def sorted_matches
+    user_ids = @user.matches.to_a
+    fetch_and_sort user_ids
   end
 
   def compatible_users
@@ -87,4 +98,14 @@ class User < ActiveRecord::Base
   def matched_with? user
     matches.member? user.id
   end
+
+  private
+
+    def fetch_and_sort ids
+      users = User.where(id:ids)
+      map = Hash[ids.map.with_index.to_a]
+      users.to_a.sort_by! {|user| map[user.id.to_s]}
+      users
+    end
+
 end

@@ -11,7 +11,12 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150206112626) do
+ActiveRecord::Schema.define(version: 20150211113509) do
+
+  create_table "email_verifications", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
 
   create_table "universities", force: :cascade do |t|
     t.datetime "created_at", null: false

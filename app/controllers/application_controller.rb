@@ -5,7 +5,7 @@ class ApplicationController < ActionController::Base
 
   def check_authentication
     @user = User.find_by(access_token: params[:access_token])
-    if !@user
+    if !@user || !params[:access_token]
       render json: {error: "Session expired. Please login again"}, status: 401
     end
   end

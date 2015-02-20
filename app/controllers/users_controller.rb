@@ -16,9 +16,9 @@ class UsersController < ApplicationController
 
   def ignore
     @user.history << params[:id]
+    @user.admired.delete(params[:id])
     render json: {success:true}, status: 200
   end
-
 
   def update
     # todo

@@ -4,7 +4,8 @@ class EmailVerificationsController < ApplicationController
     if !verification
       # todo
     end
-    verification.user.verify!
+    verification.user.verified!
+    verification.destroy
     # show confirmation
   end
 end
