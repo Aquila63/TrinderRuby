@@ -101,11 +101,12 @@ class User < ActiveRecord::Base
     end
 
     def ensure_is_in_correct_set
-      if self.gender_changed? || self.interested_in_changed?
-        puts "Here #{self.id}: #{Redis::Set.new(targeted_by_identifier).to_a}"
+      if self.gender_changed? || self.interested_in_changed? || self.created_at_changed? # if the created_at changed, then it's a new record
         Redis::Set.new(old_targeted_by_identifier).delete(id) # move out of old
         Redis::Set.new(targeted_by_identifier) << id # and into new
-        puts "Here: #{Redis::Set.new(targeted_by_identifier).to_a}"
+        puts "Here #{self.id}: #{Redis::Set.new(targeted_by_identifier).to_a}"
+      else
+        puts "Here #{self.id}: New record? #{self.created_at_changed?}"
       end
     end
 
