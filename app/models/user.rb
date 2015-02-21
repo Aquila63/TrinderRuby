@@ -74,7 +74,6 @@ class User < ActiveRecord::Base
       token = SecureRandom.urlsafe_base64(10)
     end while User.exists?(access_token: token)
     self.access_token = token
-    self.save
   end
 
   def age
@@ -118,7 +117,7 @@ class User < ActiveRecord::Base
     end
 
     def old_targeted_by_identifier
-      "#{university_id}-#{User.genders[gender_was]}-#{User.genders[interested_in_was]}"
+      "#{university_id}-#{User.genders[gender_was]}-#{User.interested_ins[interested_in_was]}"
     end
 
 end
