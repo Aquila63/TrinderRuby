@@ -91,7 +91,7 @@ class User < ActiveRecord::Base
     matches.member? user.id
   end
 
-  #private
+  private
 
     def fetch_and_sort ids
       users = User.where(id:ids)
@@ -104,9 +104,6 @@ class User < ActiveRecord::Base
       if self.gender_changed? || self.interested_in_changed? || self.created_at_changed? # if the created_at changed, then it's a new record
         Redis::Set.new(old_targeted_by_identifier).delete(id) # move out of old
         Redis::Set.new(targeted_by_identifier) << id # and into new
-        puts "Here #{self.id}: #{Redis::Set.new(targeted_by_identifier).to_a}"
-      else
-        puts "Here #{self.id}: New record? #{self.created_at_changed?}"
       end
     end
 
