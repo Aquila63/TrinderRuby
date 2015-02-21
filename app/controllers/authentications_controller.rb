@@ -2,7 +2,7 @@ class AuthenticationsController < ApplicationController
   before_action :check_authentication, only: :email
 
   def facebook
-    user = User.auth_using_facebook_access_token params[:fb_access_token]
+    user = Facebook.create_user_from_token params[:fb_access_token]
     if !user
       render json: {error: "Not a member of a valid university group"}
     else

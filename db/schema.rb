@@ -32,7 +32,7 @@ ActiveRecord::Schema.define(version: 20150211113509) do
     t.date     "date_of_birth"
     t.string   "snapchat_username",   limit: 255
     t.string   "photo_urls",          limit: 255
-    t.integer  "relationship_status", limit: 4,     default: 0, null: false
+    t.string   "relationship_status", limit: 255
     t.integer  "account_status",      limit: 4,     default: 0, null: false
     t.integer  "interested_in",       limit: 4,     default: 0, null: false
     t.integer  "gender",              limit: 4,     default: 0, null: false

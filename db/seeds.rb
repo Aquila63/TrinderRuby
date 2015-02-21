@@ -8,7 +8,6 @@ User.redis.flushdb
 @user.gender = :male
 @user.interested_in = :females
 @user.save
-@user.set_visible
 puts "Access Token: #{@user.access_token}"
 
 def self.demo_photo
@@ -31,5 +30,4 @@ end
   user.course = "Computer Science"
   user.snapchat_username = Faker::Internet.user_name
   user.save
-  user.set_visible
 end
