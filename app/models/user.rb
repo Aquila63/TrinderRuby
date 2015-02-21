@@ -7,9 +7,9 @@ class User < ActiveRecord::Base
   has_one :email_verification
   belongs_to :university
 
-  serialize :photo_urls
+  after_save :ensure_is_in_correct_set
 
-  enum relationship_status: [:single, :its_complicated, :in_a_relationship]
+  serialize :photo_urls
   enum account_status: [:unverified, :verified]
   enum gender: [:male, :female]
   enum interested_in: [:males, :females]
@@ -19,8 +19,10 @@ class User < ActiveRecord::Base
   set :admired # people you've admired
   set :matches
 
+  # fetch methods
+
   def random_valid_users(number)
-    user_ids = self.compatible_users.difference(history, matches, admired).sample(number)
+    user_ids = compatible_users.difference(history, matches, admired).sample(number)
     user_ids -= [id.to_s] # remove yourself. Not ideal
     user_ids = (admirers.to_a + user_ids).uniq
     fetch_and_sort user_ids
@@ -34,14 +36,6 @@ class User < ActiveRecord::Base
   def sorted_matches
     user_ids = @user.matches.to_a
     fetch_and_sort user_ids
-  end
-
-  def compatible_users
-    # users that the current user might be interested in
-    if !@identifiers
-      @identifiers = Redis::Set.new(targetting_identifier) #create or retrieve
-    end
-    @identifiers
   end
 
   def like user
@@ -58,31 +52,28 @@ class User < ActiveRecord::Base
     end
   end
 
+  def compatible_users
+    # users that the current user might be interested in
+    if !@identifiers
+      @identifiers = Redis::Set.new(targetting_identifier) #create or retrieve
+    end
+    @identifiers
+  end
+
+  # auth
+
+  def send_verification_email
+    self.email_verification = EmailVerification.generate! self
+  end
+
+  # others and helpers
+
   def generate_access_token
     token = ""
     begin
       token = SecureRandom.urlsafe_base64(10)
     end while User.exists?(access_token: token)
     self.access_token = token
-    self.save
-  end
-
-  def set_visible
-    Redis::Set.new(targeted_by_identifier) << id
-  end
-
-  def set_invisible
-    Redis::Set.new(targeted_by_identifier).delete(id)
-  end
-
-  def targeted_by_identifier
-    # be found by people who have their targetting identifier as this.
-    "#{university_id}-#{self[:gender]}-#{self[:interested_in]}"
-  end
-
-  def targetting_identifier
-    # find people who have their targeted_by identifier as this
-    "#{university_id}-#{self[:interested_in]}-#{self[:gender]}"
   end
 
   def age
@@ -92,7 +83,7 @@ class User < ActiveRecord::Base
   end
 
   def status
-    relationship_status.humanize
+    relationship_status
   end
 
   def matched_with? user
@@ -106,6 +97,27 @@ class User < ActiveRecord::Base
       map = Hash[ids.map.with_index.to_a]
       users.to_a.sort_by! {|user| map[user.id.to_s]}
       users
+    end
+
+    def ensure_is_in_correct_set
+      if self.gender_changed? || self.interested_in_changed? || self.created_at_changed? # if the created_at changed, then it's a new record
+        Redis::Set.new(old_targeted_by_identifier).delete(id) # move out of old
+        Redis::Set.new(targeted_by_identifier) << id # and into new
+      end
+    end
+
+    def targetting_identifier
+      # find people who have their targeted_by identifier as this
+      "#{university_id}-#{self[:interested_in]}-#{self[:gender]}"
+    end
+
+    def targeted_by_identifier
+      # be found by people who have their targetting identifier as this.
+      "#{university_id}-#{self[:gender]}-#{self[:interested_in]}"
+    end
+
+    def old_targeted_by_identifier
+      "#{university_id}-#{User.genders[gender_was]}-#{User.interested_ins[interested_in_was]}"
     end
 
 end

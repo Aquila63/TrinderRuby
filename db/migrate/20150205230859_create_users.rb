@@ -10,8 +10,8 @@ class CreateUsers < ActiveRecord::Migration
       t.date   :date_of_birth
       t.string :snapchat_username
       t.string :photo_urls
+      t.string :relationship_status
 
-      t.integer :relationship_status, default: 0, null: false
       t.integer :account_status, default: 0, null: false
       t.integer :interested_in, default: 0, null: false
       t.integer :gender, default: 0, null: false
